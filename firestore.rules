@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string
+    //   - photoURL: string
+    //   - role: string (required, enum: ['patient', 'admin'])
+    //   - createdAt: string (required)
+    //
+    // Collection: doctors
+    // Document ID: {doctorId}
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - specialty: string (required)
+    //   - department: string (required)
+    //   - experience: number
+    //   - about: string
+    //   - image: string
+    //   - availableDays: list
+    //
+    // Collection: appointments
+    // Document ID: {appointmentId}
+    // Fields:
+    //   - id: string (required)
+    //   - patientId: string (required)
+    //   - patientName: string
+    //   - doctorId: string (required)
+    //   - doctorName: string
+    //   - date: string (required)
+    //   - time: string (required)
+    //   - status: string (required, enum: ['pending', 'confirmed', 'cancelled', 'completed'])
+    //   - notes: string
+    //   - createdAt: string (required)
+    //
+    // Collection: reports
+    // Document ID: {reportId}
+    // Fields:
+    //   - id: string (required)
+    //   - patientId: string (required)
+    //   - title: string (required)
+    //   - fileUrl: string (required)
+    //   - date: string (required)
+    //   - createdAt: string (required)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "oshan951@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isDocOwner(data) {
+      return isAuthenticated() && request.auth.uid == data.patientId;
+    }
+
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() > 0 &&
+             data.email is string && data.email.size() > 0 &&
+             data.role in ['patient', 'admin'];
+    }
+
+    function isValidAppointment(data) {
+      return data.patientId is string && data.doctorId is string &&
+             data.date is string && data.time is string &&
+             data.status in ['pending', 'confirmed', 'cancelled', 'completed'];
+    }
+
+    function isValidReport(data) {
+      return data.patientId is string && data.title is string &&
+             data.fileUrl is string && data.date is string;
+    }
+
+    // Rules
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data);
+    }
+
+    match /doctors/{doctorId} {
+      allow read: if true; // Publicly readable
+      allow write: if isAdmin();
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isAuthenticated() && (isDocOwner(resource.data) || isAdmin());
+      allow create: if isAuthenticated() && isDocOwner(request.resource.data) && isValidAppointment(request.resource.data);
+      allow update: if isAuthenticated() && (isDocOwner(resource.data) || isAdmin()) && isValidAppointment(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAuthenticated() && (isDocOwner(resource.data) || isAdmin());
+      allow create: if isAuthenticated() && (isDocOwner(request.resource.data) || isAdmin()) && isValidReport(request.resource.data);
+      allow update: if isAuthenticated() && (isDocOwner(resource.data) || isAdmin()) && isValidReport(request.resource.data);
+      allow delete: if isAdmin();
+    }
+  }
+}

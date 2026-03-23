@@ -1,0 +1,5 @@
+{
+  "name": "MediGreen Hospital",
+  "description": "A modern hospital management system with patient dashboard, appointment booking, and admin panel.",
+  "requestFramePermissions": []
+}
