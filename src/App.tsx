@@ -37,7 +37,7 @@ const Navbar = ({ user, profile, onLogin, onLogout }: { user: any, profile: User
               <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center">
                 <Stethoscope className="text-white w-6 h-6" />
               </div>
-              <span className="text-xl font-bold text-emerald-900 tracking-tight">MediGreen</span>
+              <span className="text-xl font-bold text-emerald-900 tracking-tight">MediGreen Test</span>
             </Link>
           </div>
 
